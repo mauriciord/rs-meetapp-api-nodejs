@@ -1,7 +1,10 @@
 import 'dotenv/config';
 
 import express from 'express';
+import cors from 'cors';
 import routes from './routes';
+
+import './database';
 
 class App {
   constructor() {
@@ -12,11 +15,13 @@ class App {
   }
 
   middlewares() {
+    this.server.use(cors());
     this.server.use(express.json());
+    this.server.use(express.urlencoded({ extended: false }));
   }
 
   routes() {
-    this.server.use('/api/v1', routes);
+    this.server.use(routes);
   }
 }
 
