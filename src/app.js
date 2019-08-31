@@ -7,6 +7,7 @@ import * as Sentry from '@sentry/node';
 
 import sentryConfig from './config/sentry';
 import routes from './routes';
+import cors from 'cors';
 
 import './database';
 
@@ -23,6 +24,7 @@ class App {
 
   middlewares() {
     // The request handler must be the first middleware on the app
+    this.server.use(cors());
     this.server.use(Sentry.Handlers.requestHandler());
     this.server.use(express.json());
   }
