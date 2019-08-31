@@ -1,3 +1,5 @@
+import { format, parseISO } from 'date-fns';
+import pt from 'date-fns/locale';
 import Mail from '../../lib/Mail';
 
 class NewSubscriptionMail {
@@ -10,13 +12,19 @@ class NewSubscriptionMail {
 
     await Mail.sendMail({
       to: `${meetup.User.name} <${meetup.User.email}>`,
-      subject: `[${meetup.title}] Nova inscrição`,
-      template: 'newsubscription',
+      subject: `Nova inscrição em ${meetup.title}`,
+      template: 'subscription',
       context: {
-        organizer: meetup.User.name,
-        meetup: meetup.title,
+        meetupCreator: meetup.User.name,
+        meetup_title: meetup.title,
         user: user.name,
-        email: user.email,
+        date: format(
+          parseISO(meetup.date),
+          "dd 'de' MMMM' de ' yyyy', às' H:mm'h'",
+          {
+            locale: pt,
+          }
+        ),
       },
     });
   }

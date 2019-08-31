@@ -19,50 +19,48 @@ class MeetupController {
 
     const meetups = await Meetup.findAll({
       where,
-      order: ['date'],
       include: [
         {
           model: User,
-          as: 'user',
-          attributes: ['id', 'name', 'email'],
+          attributes: ['name', 'email', 'avatar_id'],
         },
       ],
       limit: 10,
-      offset: (page - 1) * 10,
+      offset: 10 * page - 10,
     });
+
     return res.json(meetups);
   }
 
   async store(req, res) {
+    // data validation
     const schema = Yup.object().shape({
-      title: Yup.string().required(),
-      file_id: Yup.number().required(),
-      description: Yup.string().required(),
-      location: Yup.string().required(),
-      date: Yup.date().required(),
+      title: Yup.string().required("'title' field is required (type: string)"),
+      description: Yup.string().required(
+        "'description' field is required (type: string)"
+      ),
+      date: Yup.date().required("'date' field is required (type: date)"),
+      location: Yup.string().required(
+        "'location' field is required (type: string)"
+      ),
+      file_id: Yup.number().required(
+        "'file_id' field is required (type: number)"
+      ),
     });
 
-    if (!(await schema.isValid(req.body))) {
-      return res.status(400).json({ erro: 'Validation fails ' });
-    }
+    schema.validate(req.body).catch(err => {
+      return res.status(400).json({ error: err.message });
+    });
 
+    //  Checks if the date has passed
     if (isBefore(parseISO(req.body.date), new Date())) {
       return res.status(400).json({ error: 'Meetup date invalid' });
     }
 
-    const checkMeetups = await Meetup.findOne({
-      where: {
-        date: req.body.date,
-      },
-    });
-
-    if (checkMeetups) {
-      return res.status(400).json({ error: 'Meetup date is not available' });
-    }
-
+    const user_id = req.userId;
     const meetup = await Meetup.create({
       ...req.body,
-      user_id: req.userId,
+      user_id,
     });
 
     return res.json(meetup);
@@ -70,31 +68,34 @@ class MeetupController {
 
   async update(req, res) {
     const schema = Yup.object().shape({
-      title: Yup.string().required(),
-      file_id: Yup.number().required(),
-      description: Yup.string().required(),
-      location: Yup.string().required(),
-      date: Yup.date().required(),
+      title: Yup.string(),
+      description: Yup.string(),
+      date: Yup.date(),
+      location: Yup.string(),
+      file_id: Yup.number(),
     });
 
-    if (!(await schema.isValid(req.body))) {
-      return res.status(400).json({ error: 'Validation fails' });
-    }
-
-    const user_id = req.userId;
+    schema.validate(req.body).catch(err => {
+      return res.status(400).json({ error: err.message });
+    });
 
     const meetup = await Meetup.findByPk(req.params.id);
 
-    if (meetup.user_id !== user_id) {
-      return res.status(401).json({ error: 'Not authorized.' });
+    if (meetup.user_id !== req.userId) {
+      return res
+        .status(401)
+        .json({ error: 'You do not have permission to change this meetup.' });
     }
 
+
     if (isBefore(parseISO(req.body.date), new Date())) {
-      return res.status(400).json({ error: 'Meetup date invalid' });
+      return res.status(400).json({ error: 'Meetup date invalid.' });
     }
 
     if (meetup.past) {
-      return res.status(400).json({ error: "Can't update past meetups." });
+      return res
+        .status(400)
+        .json({ error: "Can't change a meeting that happened." });
     }
 
     await meetup.update(req.body);
@@ -102,25 +103,24 @@ class MeetupController {
     return res.json(meetup);
   }
 
-  async destroy(req, res) {
-    const user_id = req.userId;
-
+  async delete(req, res) {
     const meetup = await Meetup.findByPk(req.params.id);
 
-    if (!meetup) {
-      return res.status(400).json({ error: 'Meetup not found' });
+    // Checks if the logged user is the meetup creator
+    if (meetup.user_id !== req.userId) {
+      return res.status(401).json({ error: 'Not authorized.' });
     }
 
-    if (meetup.user_id !== user_id) {
-      return res.status(401).json({ error: 'Not Authorization' });
-    }
-
+    // Checks if the meeting has happened
     if (meetup.past) {
-      return res.status(400).json({ error: "Can't delete past meetups" });
+      return res
+        .status(400)
+        .json({ error: "Can't delete a meeting that happened." });
     }
+
     await meetup.destroy();
 
-    return res.json({ message: 'Meetup deleted' });
+    return res.send();
   }
 }
 

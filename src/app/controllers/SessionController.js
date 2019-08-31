@@ -9,13 +9,13 @@ class SessionController {
     const schema = Yup.object().shape({
       email: Yup.string()
         .email()
-        .required(),
-      password: Yup.string().required(),
+        .required('email field is required'),
+      password: Yup.string().required('password field is required'),
     });
 
-    if (!(await schema.isValid(req.body))) {
-      return res.status(400).json({ error: 'Validation fails' });
-    }
+    schema
+      .validate(req.body)
+      .catch(e => res.status(400).json({ error: e.message }));
 
     const { email, password } = req.body;
 

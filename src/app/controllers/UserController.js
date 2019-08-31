@@ -4,18 +4,18 @@ import User from '../models/User';
 class UserController {
   async store(req, res) {
     const schema = Yup.object().shape({
-      name: Yup.string().required(),
+      name: Yup.string().required('name field is required'),
       email: Yup.string()
-        .email()
-        .required(),
+        .email('invalid email')
+        .required('email field is required'),
       password: Yup.string()
-        .required()
-        .min(6),
+        .min(6, 'Passwords must be at least 6 characters long')
+        .required('password field is required'),
     });
 
-    if (!(await schema.isValid(req.body))) {
-      return res.status(400).json({ error: 'Validation fails' });
-    }
+    schema
+      .validate(req.body)
+      .catch(e => res.status(400).json({ error: e.message }));
 
     const userExists = await User.findOne({ where: { email: req.body.email } });
 
@@ -23,33 +23,41 @@ class UserController {
       return res.status(400).json({ error: 'User already exists.' });
     }
 
-    const { id, name, email } = await User.create(req.body);
+    const { id, name, email, provider } = await User.create(req.body);
 
     return res.json({
       id,
       name,
       email,
+      provider,
     });
   }
 
   async update(req, res) {
     const schema = Yup.object().shape({
       name: Yup.string(),
-      email: Yup.string().email(),
-      old_password: Yup.string().min(6),
+      email: Yup.string().email('invalid email'),
+      oldPassword: Yup.string().min(
+        6,
+        'Passwords must be at least 6 characters long'
+      ),
       password: Yup.string()
-        .min(6)
-        .when('old_password', (old_password, field) =>
-          old_password ? field.required() : field
+        .min(6, 'Passwords must be at least 6 characters long')
+        .when('oldPassword', (oldPassword, field) =>
+          oldPassword ? field.required() : field
         ),
-      password_confirmation: Yup.string().when('password', (password, field) =>
-        password ? field.required().oneOf([Yup.ref('password')]) : field
+      confirmPassword: Yup.string().when('password', (password, field) =>
+        password
+          ? field
+              .required()
+              .oneOf([Yup.ref('password')], 'confirm password does not match')
+          : field
       ),
     });
 
-    if (!(await schema.isValid(req.body))) {
-      return res.status(400).json({ error: 'Validation fails' });
-    }
+    schema
+      .validate(req.body)
+      .catch(e => res.status(400).json({ error: e.message }));
 
     const { email, old_password } = req.body;
 
@@ -67,13 +75,9 @@ class UserController {
       return res.status(401).json({ error: 'Password does not match' });
     }
 
-    const { id, name, email: userEmail } = await user.update(req.body);
+    const { id, name, provider } = await user.update(req.body);
 
-    return res.json({
-      id,
-      name,
-      email: userEmail,
-    });
+    return res.json({ id, name, email, provider });
   }
 }
 

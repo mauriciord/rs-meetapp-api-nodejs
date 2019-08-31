@@ -25,13 +25,6 @@ module.exports = {
         defaultValue: false,
         allowNull: false,
       },
-      file_id: {
-        type: Sequelize.INTEGER,
-        references: { model: 'files', key: 'id' },
-        onUpdate: 'CASCADE',
-        OnDelete: 'SET NULL',
-        allowNull: true,
-      },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -43,7 +36,7 @@ module.exports = {
     });
   },
 
-  down: (queryInterface, Sequelize) => {
+  down: queryInterface => {
     return queryInterface.dropTable('users');
   },
 };

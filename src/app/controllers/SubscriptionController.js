@@ -30,17 +30,24 @@ class SubscriptionController {
   async store(req, res) {
     const user = await User.findByPk(req.userId);
     const meetup = await Meetup.findByPk(req.params.meetupId, {
-      include: [User],
+      include: [
+        {
+          model: User,
+          attributes: ['name', 'email'],
+        },
+      ],
     });
 
-    if (meetup.user_id === req.userId) {
-      return res
-        .status(400)
-        .json({ error: "Can't subscribe to you own meetups" });
+    if (user.id === meetup.user_id) {
+      return res.status(401).json({
+        error: "Can't subscribe to you own meetups",
+      });
     }
 
     if (meetup.past) {
-      return res.status(400).json({ error: "Can't subscribe to past meetups" });
+      return res
+        .status(400)
+        .json({ error: "Can't subscribe to a meeting that happened" });
     }
 
     const checkDate = await Subscription.findOne({
